@@ -1,5 +1,9 @@
 #include "ESP32_VS1053_Stream.h"
 
+#ifndef TAG
+	static const char* TAG = "VS1053";
+#endif
+
 static HTTPClient* _http = NULL;
 static String _url;
 static String _user;
@@ -102,7 +106,7 @@ bool ESP32_VS1053_Stream::connecttohost(const String& url) {
     _http->setConnectTimeout(url.startsWith("https") ? CONNECT_TIMEOUT_MS_SSL : CONNECT_TIMEOUT_MS);
     _http->setFollowRedirects(HTTPC_STRICT_FOLLOW_REDIRECTS);
 
-    //const unsigned long START_TIME_MS {millis()}; //only used for debug
+    const unsigned long START_TIME_MS {millis()}; //only used for debug
 
     const int result = _http->GET();
 
@@ -235,7 +239,7 @@ void ESP32_VS1053_Stream::_handleStream(WiFiClient* const stream) {
         _vs1053->startSong();
     }
 
-    //size_t bytesToDecoder = 0; //only used for debug
+    size_t bytesToDecoder = 0; //only used for debug
 
     while (stream->available() && _vs1053->data_request() && _remainingBytes && _musicDataPosition < _metaDataStart) {
         const size_t BYTES_AVAILABLE = _metaDataStart ? _metaDataStart - _musicDataPosition : stream->available();
@@ -283,15 +287,15 @@ void ESP32_VS1053_Stream::_handleChunkedStream(WiFiClient* const stream) {
         }
     }
 
-    //size_t bytesToDecoder = 0; //only used for debug
+    size_t bytesToDecoder = 0; //only used for debug
 
     while (_bytesLeftInChunk && _vs1053->data_request() && _musicDataPosition < _metaDataStart) {
-        const size_t BYTES_AVAILABLE = min(_bytesLeftInChunk, (size_t)_metaDataStart - _musicDataPosition);
+        const size_t BYTES_AVAILABLE = min(_bytesLeftInChunk, (size_t)(_metaDataStart - _musicDataPosition));
         const int BYTES_IN_BUFFER = stream->readBytes(_vs1053Buffer, min(BYTES_AVAILABLE, VS1053_PACKETSIZE));
         _vs1053->playChunk(_vs1053Buffer, BYTES_IN_BUFFER);
         _bytesLeftInChunk -= BYTES_IN_BUFFER;
         _musicDataPosition += _metaDataStart ? BYTES_IN_BUFFER : 0;
-        //bytesToDecoder += BYTES_IN_BUFFER;
+        bytesToDecoder += BYTES_IN_BUFFER;
     }
 
     ESP_LOGD(TAG, "%5lu bytes to decoder", bytesToDecoder);
